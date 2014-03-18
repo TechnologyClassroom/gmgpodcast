@@ -1,5 +1,8 @@
-from mediagoblin.tools.response import json_response
+from mediagoblin.tools.response import json_response, render_to_response
 from mediagoblin.tools.pluginapi import get_config
+from mediagoblin.decorators import require_active_login
+from podcast import forms
+from mediagoblin.submit.lib import get_upload_file_limits
 
 import logging
 import time
@@ -93,6 +96,46 @@ def get_podcasts(request):
 	category = etree.Element("{%s}category"%NSMAP['itunes'],text="Cats")
 	channel.append(category)
 	
+	ituneimage = etree.Element("{%s}image"%NSMAP['itunes'], href="")#image url
+	channel.append(ituneimage)
+	
+	#explicit = etree.Element("{%s}explicit
+	
 	xml.append(channel)
 #	_log.info(tostring(xml,xml_declaration=True))
 	return wz_Response(tostring(xml, xml_declaration=True, pretty_print=True))
+
+#called when /makeapodcast.html is visited
+@require_active_login
+def register_podcast(request):
+	
+	upload_limit, max_file_size = get_upload_file_limits(request.user)
+	
+	podcast_form = forms.podcast_create_form(
+		request.form,
+		license=request.user.license_preference,
+		max_file_size = max_file_size,
+		upload_limit = upload_limit,
+		uploaded = request.user.uploaded)
+	return render_to_response(request, '/podcast/makeapodcast.html', {'podcast_form':podcast_form})
+
+#called when create button is pressed in /makeapodcast.html
+def create_podcast(request):
+	_log.info(request.files['file'])
+	save_settings_for_user(request.form, request.user)
+	
+	return list_podcast(request)
+	
+def list_podcast(request):
+	podcast_list = ['s','s','a']
+		
+	add_podcast_form = forms.add_podcast(request.form)
+	return render_to_response(request, '/podcast/podcastlist.html', {'podcast_list':podcast_list, 'add_podcast':add_podcast_form})
+
+def save_settings_for_user(form,user):
+	_log.info(user.id)
+	_log.info(form.get('title'))
+	pass
+	
+def edit_podcast(request):
+	pass
